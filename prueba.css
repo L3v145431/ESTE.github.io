@@ -1264,3 +1264,129 @@ body {
     max-width: none;
   }
 }
+
+/* ===== Ajustes mínimos para móviles ===== */
+@media (max-width: 767px) {
+  /* Navegación */
+  .nav-buttons {
+    display: none !important;
+  }
+  .user-info {
+    display: none !important;
+  }
+  .mobile-nav {
+    display: flex !important;
+  }
+  .mobile-nav-btn {
+    flex: 1;
+    padding: 0.5rem 0;
+    font-size: 0.7rem;
+  }
+  .mobile-nav-btn i {
+    font-size: 1.3rem;
+    margin-bottom: 0.2rem;
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    grid-template-columns: repeat(1, 1fr) !important;
+    gap: 1rem !important;
+  }
+
+  /* Certificates Grid */
+  .certificates-grid {
+    grid-template-columns: repeat(1, 1fr) !important;
+    gap: 1rem !important;
+  }
+
+  /* Tablas */
+  table {
+    width: 100% !important;
+    display: block !important;
+    overflow-x: auto !important;
+  }
+
+  /* Formularios */
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    width: 100% !important;
+  }
+
+  /* Verifier View */
+  .verify-input-group {
+    flex-direction: column !important;
+  }
+  .verify-input {
+    width: 100% !important;
+    margin-bottom: 0.5rem !important;
+  }
+  .btn-primary {
+    width: 100% !important;
+  }
+
+  /* File Upload */
+  .file-upload-area {
+    padding: 2rem !important;
+  }
+}
+/* ===== Ajustes para móviles: Icono de usuario y logout ===== */
+@media (max-width: 767px) {
+  /* Header */
+  .header-container {
+    padding: 0 0.5rem !important;
+  }
+
+  /* Ocultar nav-buttons y mostrar mobile-nav */
+  .nav-buttons {
+    display: none !important;
+  }
+
+  /* Mostrar user-info en móviles, pero compacto */
+  .user-info {
+    display: flex !important;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  /* Ajustar el tamaño del icono y nombre de usuario */
+  .user-info i {
+    font-size: 1.2rem !important;
+  }
+
+  /* Ajustar el user-info para mostrar el nombre completo */
+  .user-info span {
+    font-size: 0.75rem !important;
+    max-width: 150px !important; /* Aumentar el ancho máximo */
+    white-space: nowrap !important;
+    overflow: visible !important; /* Permitir que el texto desborde si es necesario */
+    text-overflow: clip !important; /* No mostrar "..." */
+  }
+
+  /* Botón de logout en móviles */
+  .logout-btn {
+    padding: 0.9rem 0.5rem !important;
+    font-size: 0.7rem !important;
+    margin-left: 2rem !important;
+  }
+
+  /* Mobile nav */
+  .mobile-nav {
+    display: flex !important;
+    justify-content: space-around;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top: 1px solid var(--neutral-200);
+    padding: 0.5rem 0;
+    z-index: 50;
+  }
+
+  /* Logo en móviles */
+  .logo span {
+    font-size: 1rem !important;
+  }
+}
