@@ -134,37 +134,37 @@ doc.text(`${nombre}`, 425, 190, { align: 'center' }); // <-- Aquí se muestra el
 }
 
 async function downloadCertificate(certificateId) {
-    showLoading();
-    try {
-        const certificate = certificatesCache.find(cert => cert.id == certificateId);
-        if (!certificate) throw new Error('Certificate not found');
-        const id = generateUniqueId();
-        const hashHex = await generateHash(id);
-        // Usa el nombre del usuario logeado en lugar de certificate.nombre
-        const userName = localStorage.getItem('userName') || certificate.nombre;
-        const pdfBlob = await generarPDFIndividual(
-            userName, // <-- Aquí pasa el nombre del usuario logeado
-            certificate.course.title,
-            certificate.completionDate,
-            id,
-            hashHex
-        );
-        await saveCertificateToFirestore(id, userName, certificate.course.title, certificate.completionDate, hashHex);
-        const pdfUrl = URL.createObjectURL(pdfBlob);
-        const a = document.createElement('a');
-        a.href = pdfUrl;
-        a.download = `certificado_${id}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        showToast('success', 'Certificate Downloaded', 'Your certificate has been downloaded successfully.');
-    } catch (error) {
-        console.error('Download error:', error);
-        showToast('error', 'Download Failed', 'Failed to download certificate. Please try again.');
-    } finally {
-        hideLoading();
-    }
+  showLoading();
+  try {
+    const certificate = certificatesCache.find(cert => cert.id == certificateId);
+    if (!certificate) throw new Error('Certificate not found');
+    const id = generateUniqueId();
+    const hashHex = await generateHash(id);
+    const userName = localStorage.getItem('userName') || certificate.nombre;
+    const pdfBlob = await generarPDFIndividual(
+      userName,
+      certificate.course.title,
+      certificate.completionDate,
+      id,
+      hashHex
+    );
+    await saveCertificateToFirestore(id, userName, certificate.course.title, certificate.completionDate, hashHex);
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a');
+    a.href = pdfUrl;
+    a.download = `certificado_${id}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast('success', 'Certificate Downloaded', 'Your certificate has been downloaded successfully.');
+  } catch (error) {
+    console.error('Download error:', error);
+    showToast('error', 'Download Failed', 'Failed to download certificate. Please try again.');
+  } finally {
+    hideLoading();
+  }
 }
+
 
 function addCourse() {
     currentCourseId = null;
@@ -432,6 +432,7 @@ function showView(viewName) {
         btn.classList.toggle('active', btn.dataset.view === viewName);
     });
     loadViewData(viewName);
+    window.scrollTo(0, 0);
 }
 
 function loadViewData(viewName) {
