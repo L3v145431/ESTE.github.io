@@ -13,40 +13,59 @@ const app = firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore(); 
 
-// Función para manejar el inicio de sesión
 document.getElementById('login-form').addEventListener('submit', async function(e) {
   e.preventDefault();
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
 
-  // Configurar la persistencia de la sesión en Firebase
   auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
     .then(() => {
-      // Iniciar sesión con el correo electrónico y la contraseña
-   // Después de un login exitoso
-return auth.signInWithEmailAndPassword(email, password);
-})
-.then(async (userCredential) => {
-  const user = userCredential.user;
-  // Obtener el documento del usuario en Firestore
-  const userDoc = await db.collection('users').doc(user.uid).get();
-  if (userDoc.exists) {
-    const userData = userDoc.data();
-    // Guardar nombre y rol en localStorage
-    localStorage.setItem('userName', userData.name);
-    localStorage.setItem('userRole', userData.role);
-  }
-  // Mostrar mensaje de éxito
-  showToast('success', 'Login Successful', 'You have successfully logged in.');
-  // Redirigir al usuario a la página principal
-  setTimeout(() => {
-    window.location.href = 'prueba.html';
-  }, 2000);
-})
-
+      return auth.signInWithEmailAndPassword(email, password);
+    })
+    .then(async (userCredential) => {
+      const user = userCredential.user;
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        localStorage.setItem('userName', userData.name);
+        localStorage.setItem('userRole', userData.role);
+      }
+      
+      showToast('success', '¡Inicio de sesión exitoso!', 'Bienvenido de vuelta.');
+      setTimeout(() => {
+        window.location.href = 'prueba.html';
+      }, 2000);
+    })
     .catch((error) => {
       console.error("Error signing in: ", error);
-      showToast('error', 'Login Failed', error.message);
+      
+      // PERSONALIZAR MENSAJES DE ERROR
+      let errorMessage = 'Error al iniciar sesión.';
+      
+      switch(error.code) {
+        case 'auth/invalid-credential':
+        case 'auth/wrong-password':
+        case 'auth/user-not-found':
+          errorMessage = 'Usuario o contraseña incorrectos. Por favor, verifica tus credenciales.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'El formato del correo electrónico no es válido.';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'Tu cuenta ha sido desactivada. Contacta al administrador.';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Demasiados intentos fallidos. Intenta nuevamente más tarde.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Error de conexión. Verifica tu internet e intenta nuevamente.';
+          break;
+        default:
+          errorMessage = 'Error inesperado. Por favor, intenta nuevamente.';
+      }
+      
+      showToast('error', 'Error de inicio de sesión', errorMessage);
     });
 });
 
