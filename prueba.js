@@ -81,7 +81,24 @@ function generateQRCodeLink(id) {
 async function generarPDFIndividual(nombre, curso, fecha, id, hashHex) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'A4' });
-    const fondoURL = 'https://static.wixstatic.com/media/a687f1_6daa751a4aac4a418038ae37f20db004~mv2.jpg';
+
+    // URLs de la fuente Roboto (puedes reemplazar con tus propias URLs)
+    const robotoRegularUrl = 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf';
+    const robotoBoldUrl = 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf';
+
+    // Función para cargar y registrar la fuente en jsPDF
+    const loadAndRegisterFont = async (url, fontName, fontStyle) => {
+        const response = await fetch(url);
+        const fontData = await response.arrayBuffer();
+        const base64Font = btoa(
+            new Uint8Array(fontData).reduce(
+                (data, byte) => data + String.fromCharCode(byte),
+                ''
+            )
+        );
+        doc.addFileToVFS(`${fontName}.ttf`, base64Font);
+        doc.addFont(`${fontName}.ttf`, fontName, fontStyle);
+    };
 
     const loadImage = (src) => {
         return new Promise((resolve, reject) => {
@@ -94,36 +111,70 @@ async function generarPDFIndividual(nombre, curso, fecha, id, hashHex) {
     };
 
     try {
+        // Cargar y registrar las fuentes Roboto
+        await loadAndRegisterFont(robotoRegularUrl, 'Roboto', 'normal');
+        await loadAndRegisterFont(robotoBoldUrl, 'Roboto', 'bold');
+
+        const fondoURL = 'https://static.wixstatic.com/media/a687f1_6daa751a4aac4a418038ae37f20db004~mv2.jpg';
         const fondo = await loadImage(fondoURL);
         const qrUrl = generateQRCodeLink(id);
         const qrImage = await loadImage(qrUrl);
 
         doc.addImage(fondo, 'JPEG', 0, 0, 850, 595);
-        doc.setFontSize(35);
+
+        // Título del curso (Roboto Bold)
+        doc.setFont('Roboto', 'bold');
+        doc.setFontSize(37);
         doc.setTextColor(0, 0, 0);
         doc.text(`${curso}`, 425, 130, { align: 'center' });
+
+        // Nombre del usuario (Roboto Bold, color blanco)
+        doc.setFont('Roboto', 'bold');
+        doc.setFontSize(35);
         doc.setTextColor(255, 255, 255);
         doc.text(`${nombre}`, 425, 190, { align: 'center' });
-        doc.setTextColor(0, 0, 0);
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(14);
-        const text = "weSpark hereby certifies that you have successfully completed our Design Sprint Masterclass, demonstrating your ability to lead teams to create and test new product concepts in only 4 days.";
-        doc.text(doc.splitTextToSize(text, 600), 120, 250);
-        const text1 = "This achievement signifies your initial step toward mastering the art of Sprinting. Continue to enhance your expertise by consistently applying the Sprint methodology to tackle real-world challenges and watch";
-        doc.text(doc.splitTextToSize(text1, 650), 100, 310);
-        doc.text("your skills evolve", 340, 345);
-        doc.setFontSize(10);
-        const fechaActual = new Date().toLocaleDateString();
-        doc.text(`Fecha: ${fechaActual}`, 128, 585);
-        doc.text(`ID: ${id}`, 4, 15);
-        doc.setFontSize(10);
-        doc.text(`Hash: ${hashHex}`, 263, 585);
-        
-        doc.addImage(qrImage, 'PNG', 124, 460, 100, 100);
-        doc.setFontSize(35);
-doc.setTextColor(255, 255, 255);
-doc.text(`${nombre}`, 425, 190, { align: 'center' }); // <-- Aquí se muestra el nombre en el PDF
 
+        // Texto descriptivo (Roboto Regular)
+        doc.setFont('Roboto', 'normal');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        const text = "WeSpark certifies that you have completed our future-ready learning experience designed to build practical";
+        doc.text(doc.splitTextToSize(text, 700), 80, 250);
+
+        // Texto adicional (Roboto Regular)
+        doc.setFont('Roboto', 'normal');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        const text1 = "skills for real-world impact. This certificate celebrates your participation in our interactive, innovation-focused";
+        doc.text(doc.splitTextToSize(text1, 700), 80, 270);
+
+        // Texto "your skills evolve" (Roboto Regular)
+        doc.setFont('Roboto', 'normal');
+        doc.setFontSize(14);
+        doc.setTextColor(0, 0, 0);
+        doc.text("training. Now go out there and release your inner genius!", 260, 290);
+
+        // Fecha (Roboto Bold, color blanco)
+        const fechaActual = new Date();
+        const dia = String(fechaActual.getDate()).padStart(2, '0');
+        const mes = String(fechaActual.getMonth() + 1).padStart(2, '0');
+        const anio = fechaActual.getFullYear();
+        const fechaFormateada = `${dia}.${mes}.${anio}`;
+
+        doc.setFont('Roboto', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(255, 255, 255);
+        doc.text(`San Salvador, ${fechaFormateada}`, 340, 320);
+
+        // ID y Hash (Roboto Regular)
+        doc.setFont('Roboto', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`ID: ${id}`, 4, 15);
+        doc.text(`Hash: ${hashHex}`, 263, 585);
+
+        // Código QR
+        doc.addImage(qrImage, 'PNG', 124, 460, 100, 100);
 
         return doc.output('blob');
     } catch (error) {
@@ -132,6 +183,7 @@ doc.text(`${nombre}`, 425, 190, { align: 'center' }); // <-- Aquí se muestra el
         throw error;
     }
 }
+
 
 async function downloadCertificate(certificateId) {
   showLoading();
