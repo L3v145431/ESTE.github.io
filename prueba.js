@@ -176,18 +176,7 @@ async function generarPDFIndividual(nombre, curso, fecha, id, hashHex) {
         // Código QR
         doc.addImage(qrImage, 'PNG', 124, 460, 100, 100);
 
-       // Convertir a Blob y generar URL temporal
-      const pdfBlob = doc.output("blob");
-      const url = URL.createObjectURL(pdfBlob);
-
-      // Enviar mensaje al padre (Wix)
-      window.parent.postMessage({
-        type: "downloadPDF",
-        url: url,
-        fileName: "certificado-wespark.pdf"
-      }, "*");
-
-      alert("✅ PDF generado y enviado a Wix");
+        
 
         return doc.output('blob');
     } catch (error) {
@@ -197,38 +186,7 @@ async function generarPDFIndividual(nombre, curso, fecha, id, hashHex) {
     }
 }
 
-async function downloadCertificate(certificateId) {
-  showLoading();
-  try {
-    const certificate = certificatesCache.find(cert => cert.id == certificateId);
-    if (!certificate) throw new Error('Certificate not found');
-    const id = generateUniqueId();
-    const hashHex = await generateHash(id);
-    const userName = localStorage.getItem('userName') || certificate.nombre;
-    const pdfBlob = await generarPDFIndividual(userName, certificate.course.title, certificate.completionDate, id, hashHex);
-    await saveCertificateToFirestore(id, userName, certificate.course.title, certificate.completionDate, hashHex);
 
-    // Crear un enlace temporal para forzar la descarga
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-    const a = document.createElement('a');
-    a.href = pdfUrl;
-    a.download = `certificado_${id}.pdf`;
-    document.body.appendChild(a);
-
-    // Agregar un pequeño retraso para evitar bloqueos
-    setTimeout(() => {
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(pdfUrl); // Liberar la URL del objeto
-      showToast('success', 'Certificate Downloaded', 'Your certificate has been downloaded successfully.');
-    }, 100); // Retraso de 100 milisegundos
-  } catch (error) {
-    console.error('Download error:', error);
-    showToast('error', 'Download Failed', 'Failed to download certificate. Please try again.');
-  } finally {
-    hideLoading();
-  }
-}
 
 function addCourse() {
     currentCourseId = null;
@@ -801,36 +759,6 @@ function displayUsersTable() {
     `;
 }
 
-async function downloadCertificate(certificateId) {
-  showLoading();
-  try {
-    const certificate = certificatesCache.find(cert => cert.id == certificateId);
-    if (!certificate) throw new Error('Certificate not found');
-    const id = generateUniqueId();
-    const hashHex = await generateHash(id);
-    const userName = localStorage.getItem('userName') || certificate.nombre;
-    const pdfBlob = await generarPDFIndividual(userName, certificate.course.title, certificate.completionDate, id, hashHex);
-    await saveCertificateToFirestore(id, userName, certificate.course.title, certificate.completionDate, hashHex);
-
-    // Crear un enlace temporal para forzar la descarga
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-    const a = document.createElement('a');
-    a.href = pdfUrl;
-    a.download = `certificado_${id}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-
-    showToast('success', 'Certificate Downloaded', 'Your certificate has been downloaded successfully.');
-  } catch (error) {
-    console.error('Download error:', error);
-    showToast('error', 'Download Failed', 'Failed to download certificate. Please try again.');
-  } finally {
-    hideLoading();
-  }
-}
-
-
 function setupFileUpload() {
     const uploadArea = document.getElementById('file-upload-area');
     const fileInput = document.getElementById('csv-file');
@@ -1061,7 +989,3 @@ function displayAdminCertificatesTable() {
         </div>
     `;
 }
-
-
-
-
