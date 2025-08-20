@@ -13,11 +13,8 @@ const app = firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore(); 
 
-// Cambiarlo a esto (solo si quieres redirigir a una nueva pestaña):
-document.getElementById('login-form').addEventListener('submit', function(e) {
+document.getElementById('login-form').addEventListener('submit', async function(e) {
   e.preventDefault();
-  window.open('https://l3v145431.github.io/ESTE.github.io/login.html', '_blank');
-});
   const email = document.getElementById('email').value;
   const password = document.getElementById('password').value;
 
@@ -70,7 +67,7 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
       
       showToast('error', 'Error de inicio de sesión', errorMessage);
     });
-
+});
 
 
 
