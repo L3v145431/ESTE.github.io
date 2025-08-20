@@ -201,8 +201,13 @@ async function downloadCertificate(certificateId) {
     a.href = pdfUrl;
     a.download = `certificado_${id}.pdf`;
     document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+
+    // Agregar un pequeño retraso para evitar bloqueos
+    setTimeout(() => {
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(pdfUrl); // Liberar la URL del objeto
+    }, 100); // Retraso de 100 milisegundos
 
     showToast('success', 'Certificate Downloaded', 'Your certificate has been downloaded successfully.');
   } catch (error) {
@@ -212,7 +217,6 @@ async function downloadCertificate(certificateId) {
     hideLoading();
   }
 }
-
 
 
 function addCourse() {
@@ -1046,4 +1050,5 @@ function displayAdminCertificatesTable() {
         </div>
     `;
 }
+
 
