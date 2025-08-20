@@ -201,13 +201,17 @@ async function downloadCertificate(certificateId) {
       hashHex
     );
     await saveCertificateToFirestore(id, userName, certificate.course.title, certificate.completionDate, hashHex);
-    const pdfUrl = URL.createObjectURL(pdfBlob);
+   const pdfUrl = URL.createObjectURL(pdfBlob);
+    window.open(pdfUrl, '_blank'); // Esto abrirá el PDF en una nueva pestaña
     const a = document.createElement('a');
     a.href = pdfUrl;
     a.download = `certificado_${id}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+
+ 
+    
     showToast('success', 'Certificate Downloaded', 'Your certificate has been downloaded successfully.');
   } catch (error) {
     console.error('Download error:', error);
