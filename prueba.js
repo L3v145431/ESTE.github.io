@@ -1049,4 +1049,3 @@ function displayAdminCertificatesTable() {
     `;
 }
 
-
