@@ -184,7 +184,6 @@ async function generarPDFIndividual(nombre, curso, fecha, id, hashHex) {
     }
 }
 
-
 async function downloadCertificate(certificateId) {
   showLoading();
   try {
@@ -193,29 +192,22 @@ async function downloadCertificate(certificateId) {
     const id = generateUniqueId();
     const hashHex = await generateHash(id);
     const userName = localStorage.getItem('userName') || certificate.nombre;
-    const pdfBlob = await generarPDFIndividual(
-      userName,
-      certificate.course.title,
-      certificate.completionDate,
-      id,
-      hashHex
-    );
+    const pdfBlob = await generarPDFIndividual(userName, certificate.course.title, certificate.completionDate, id, hashHex);
     await saveCertificateToFirestore(id, userName, certificate.course.title, certificate.completionDate, hashHex);
+
+    // Abrir el PDF en una nueva pestaña
     const pdfUrl = URL.createObjectURL(pdfBlob);
-    const a = document.createElement('a');
-    a.href = pdfUrl;
-    a.download = `certificado_${id}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast('success', 'Certificate Downloaded', 'Your certificate has been downloaded successfully.');
+    window.open(pdfUrl, '_blank');
+
+    showToast('success', 'Certificate Ready', 'Your certificate is open in a new tab. Download it from there.');
   } catch (error) {
     console.error('Download error:', error);
-    showToast('error', 'Download Failed', 'Failed to download certificate. Please try again.');
+    showToast('error', 'Download Failed', 'Failed to generate certificate. Please try again.');
   } finally {
     hideLoading();
   }
 }
+
 
 
 function addCourse() {
