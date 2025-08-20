@@ -176,6 +176,19 @@ async function generarPDFIndividual(nombre, curso, fecha, id, hashHex) {
         // Código QR
         doc.addImage(qrImage, 'PNG', 124, 460, 100, 100);
 
+       // Convertir a Blob y generar URL temporal
+      const pdfBlob = doc.output("blob");
+      const url = URL.createObjectURL(pdfBlob);
+
+      // Enviar mensaje al padre (Wix)
+      window.parent.postMessage({
+        type: "downloadPDF",
+        url: url,
+        fileName: "certificado-wespark.pdf"
+      }, "*");
+
+      alert("✅ PDF generado y enviado a Wix");
+
         return doc.output('blob');
     } catch (error) {
         console.error("Error al generar PDF:", error);
@@ -1048,6 +1061,7 @@ function displayAdminCertificatesTable() {
         </div>
     `;
 }
+
 
 
 
