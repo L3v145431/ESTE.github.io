@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>WeSpark Certificate Platform</title>
     <link rel="stylesheet" href="prueba.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -14,57 +15,72 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script>
         // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyCmTISieA5tp7AKtXM0Vuf5afFuCZXv33k",
-            authDomain: "wses-a18fa.firebaseapp.com",
-            projectId: "wses-a18fa",
-            storageBucket: "wses-a18fa.appspot.com",
-            messagingSenderId: "147530546947",
-            appId: "1:147530546947:web:236f6e900decf4b0bab336"
-        };
+       // Configuración de Firebase para Auth y Users
+const firebaseConfigAuth = {
+  apiKey: "AIzaSyB43ne5sv_2-CzPC-GoNbBM5uNGiTHlQ0Q",
+  authDomain: "users-ab3e0.firebaseapp.com",
+  projectId: "users-ab3e0",
+  storageBucket: "users-ab3e0.firebasestorage.app",
+  messagingSenderId: "466535430209",
+  appId: "1:466535430209:web:4e49fde0578fb037042ec0"
+};
 
-        // Inicializar Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        
+// Configuración de Firebase para Certificates
+const firebaseConfigCertificates = {
+  apiKey: "AIzaSyCmTISieA5tp7AKtXM0Vuf5afFuCZXv33k",
+  authDomain: "wses-a18fa.firebaseapp.com",
+  projectId: "wses-a18fa",
+  storageBucket: "wses-a18fa.appspot.com",
+  messagingSenderId: "147530546947",
+  appId: "1:147530546947:web:236f6e900decf4b0bab336"
+};
+
+// Inicializar Firebase para Auth y Users
+const appAuth = firebase.initializeApp(firebaseConfigAuth, "appAuth");
+const auth = appAuth.auth();
+const dbUsers = appAuth.firestore();
+ window.auth = auth;
+    window.dbUsers = dbUsers;
+
+// Inicializar Firebase para Certificates
+const appCertificates = firebase.initializeApp(firebaseConfigCertificates, "appCertificates");
+const dbCertificates = appCertificates.firestore();
+
     </script>
-    
 </head>
 <body>
+    
     <!-- Header -->
-    <!-- Header -->
-<header class="header">
-    <div class="header-container">
-        <div class="logo">
-            <i class="fas fa-graduation-cap"></i>
-            <span>WeSpark</span>
-        </div>
-        <div class="nav-section">
-            <div class="nav-buttons">
-                <button class="nav-btn active" data-view="graduate">Graduate</button>
-                <button class="nav-btn" data-view="verifier">Verifier</button>
-                <button class="nav-btn" data-view="admin">Admin</button>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <span>WeSpark</span>
             </div>
-            <div class="user-info">
-                <i class="fas fa-user"></i>
-                <span id="user-name">John Doe</span>
-                <!-- Botón de Logout -->
-                <button class="btn btn-outline logout-btn" onclick="logout()">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
+            <div class="nav-section">
+                <div class="nav-buttons">
+                    <button class="nav-btn active" data-view="graduate">Graduate</button>
+                    <button class="nav-btn" data-view="verifier">Verifier</button>
+                    <button class="nav-btn" data-view="admin">Admin</button>
+                </div>
+                <div class="user-info">
+                    <i class="fas fa-user"></i>
+                    <span id="user-name">John Doe</span>
+                    <!-- Botón de Logout -->
+                    <button class="btn btn-outline logout-btn" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
-</header>
-
-
+    </header>
     <!-- Loading Spinner -->
     <div id="loading" class="loading hidden">
         <div class="spinner"></div>
     </div>
-
     <!-- Graduate Dashboard -->
     <div id="graduate-view" class="view active">
         <main class="main-content">
@@ -127,11 +143,8 @@
             <div id="certificates-grid" class="certificates-grid">
                 <!-- Certificates will be loaded here -->
             </div>
-            <!-- Profile Section -->
-            
         </main>
     </div>
-
     <!-- Verifier View -->
     <div id="verifier-view" class="view">
         <main class="main-content">
@@ -164,7 +177,6 @@
             </div>
         </main>
     </div>
-
     <!-- Admin View -->
     <div id="admin-view" class="view">
         <main class="main-content">
@@ -297,10 +309,13 @@
                                         <label for="course-duration">Duration (hours)</label>
                                         <input type="number" id="course-duration" required>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="course-icon">Icon Class</label>
-                                        <input type="text" id="course-icon" required>
-                                    </div>
+                                   <div class="form-group">
+  <label>Users in Course</label>
+  <div id="course-users-checkboxes" class="checkbox-group">
+    <!-- Los checkboxes se llenarán dinámicamente con JavaScript -->
+  </div>
+</div>
+
                                     <div class="form-group">
                                         <label for="course-image">Course Image</label>
                                         <input type="file" id="course-image" accept="image/*">
@@ -370,7 +385,6 @@
             </div>
         </main>
     </div>
-
     <!-- Mobile Navigation -->
     <div class="mobile-nav">
         <button class="mobile-nav-btn active" data-view="graduate">
@@ -386,11 +400,14 @@
             <span>Admin</span>
         </button>
     </div>
-
     <!-- Toast Notifications -->
     <div id="toast-container"></div>
     <!-- Dialogs will be inserted here dynamically -->
     <div id="dialog-container"></div>
     <script src="prueba.js"></script>
+    
+    <!-- Confirmation Toast -->
+<div id="confirmation-toast-container"></div>
+
 </body>
 </html>
