@@ -9,6 +9,7 @@ let currentCourseId = null;
 let currentImageFile = null;
 let currentUserId = null;
 
+
 // Función para cerrar sesión
 function logout() {
   auth.signOut().then(() => {
@@ -100,6 +101,7 @@ async function generarPDFIndividual(nombre, curso, fecha, id, hashHex) {
   const loadAndRegisterFont = async (url, fontName, fontStyle) => {
     const response = await fetch(url);
     const fontData = await response.arrayBuffer();
+    
     const base64Font = btoa(
       new Uint8Array(fontData).reduce(
         (data, byte) => data + String.fromCharCode(byte),
@@ -109,6 +111,7 @@ async function generarPDFIndividual(nombre, curso, fecha, id, hashHex) {
     doc.addFileToVFS(`${fontName}.ttf`, base64Font);
     doc.addFont(`${fontName}.ttf`, fontName, fontStyle);
   };
+  
   const loadImage = (src) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -217,24 +220,23 @@ function editCourse(courseId) {
     }
     loadUsersIntoCourseForm();
     if (course.users) {
-      const select = document.getElementById('course-users');
       course.users.forEach(userId => {
-        const option = select.querySelector(`option[value="${userId}"]`);
-        if (option) option.selected = true;
+        const checkbox = document.querySelector(`#course-users-checkboxes input[value="${userId}"]`);
+        if (checkbox) checkbox.checked = true;
       });
     }
     document.getElementById('course-form-container').classList.remove('hidden');
   }
 }
 
-// Función para subir imagen
 async function uploadImage(file) {
   return new Promise((resolve) => {
-    setTimeout(() => {
-      const imageUrl = URL.createObjectURL(file);
-      localStorage.setItem(`courseImage_${currentCourseId || 'new'}`, imageUrl);
-      resolve(imageUrl);
-    }, 1000);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64Image = e.target.result;
+      resolve(base64Image);
+    };
+    reader.readAsDataURL(file);
   });
 }
 
@@ -424,11 +426,7 @@ function displayUsersTable(users = usersCache) {
 function displayCoursesTable(courses = coursesCache) {
   const container = document.getElementById('courses-table-container');
   if (courses.length === 0) {
-    container.innerHTML = `
-      <div class="text-center" style="padding: 2rem;">
-        <p>No courses found.</p>
-      </div>
-    `;
+    container.innerHTML = `<div class="text-center" style="padding: 2rem;"><p>No courses found.</p></div>`;
     return;
   }
   container.innerHTML = `
@@ -446,22 +444,26 @@ function displayCoursesTable(courses = coursesCache) {
         </thead>
         <tbody>
           ${courses.map(course => {
-            const savedImageUrl = localStorage.getItem(`courseImage_${course.id}`);
-            let userNames = 'None';
-            if (course.users && course.users.length > 0) {
-              userNames = course.users.map(userId => {
-                const user = usersCache.find(u => u.id === userId);
-                return user ? user.name : 'Unknown';
-              }).filter(name => name !== 'Unknown').join(', ') || 'None';
-            }
+            const imageSrc = course.image || defaultImageBase64;
+            const userCount = course.users ? course.users.length : 0;
             return `
               <tr style="border-bottom: 1px solid var(--neutral-200);">
                 <td style="padding: 0.75rem; font-weight: 600;">${course.title}</td>
                 <td style="padding: 0.75rem; max-width: 300px;">${course.description}</td>
                 <td style="padding: 0.75rem;">${course.duration} hours</td>
-                <td style="padding: 0.75rem;">${userNames}</td>
                 <td style="padding: 0.75rem;">
-                  ${savedImageUrl ? `<img src="${savedImageUrl}" alt="${course.title}" style="width: 50px; height: auto;">` : 'No Image'}
+                  ${userCount > 0 ?
+                    `<button class="btn-users-count" onclick="showCourseUsers(${course.id})">${userCount}</button>` :
+                    '<span style="color: var(--neutral-600);">None</span>'
+                  }
+                </td>
+                <td style="padding: 0.75rem;">
+                  <img
+                    src="${imageSrc}"
+                    alt="${course.title}"
+                    style="width: 50px; height: auto; max-height: 50px;"
+                    onerror="this.src='${defaultImageBase64}';"
+                  >
                 </td>
                 <td style="padding: 0.75rem;">
                   <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; margin-right: 0.5rem;" onclick="editCourse(${course.id})">
@@ -480,10 +482,110 @@ function displayCoursesTable(courses = coursesCache) {
   `;
 }
 
+// Función para eliminar curso
+function deleteCourse(courseId) {
+  localStorage.removeItem(`courseImage_${courseId}`);
+  coursesCache = coursesCache.filter(course => course.id !== courseId);
+  saveCoursesToLocalStorage();
+  displayCoursesTable();
+}
+
+// Función para cargar usuarios en el formulario de cursos
+function loadUsersIntoCourseForm() {
+  const container = document.getElementById('course-users-checkboxes');
+  container.innerHTML = '';
+  usersCache.forEach(user => {
+    const checkboxItem = document.createElement('div');
+    checkboxItem.className = 'checkbox-item';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.id = `user-${user.id}`;
+    checkbox.value = user.id;
+    const label = document.createElement('label');
+    label.htmlFor = `user-${user.id}`;
+    label.textContent = `${user.name} (${user.email})`;
+    checkboxItem.appendChild(checkbox);
+    checkboxItem.appendChild(label);
+    container.appendChild(checkboxItem);
+  });
+  if (currentCourseId) {
+    const course = coursesCache.find(c => c.id === currentCourseId);
+    if (course?.users) {
+      course.users.forEach(userId => {
+        const checkbox = document.querySelector(`#user-${userId}`);
+        if (checkbox) checkbox.checked = true;
+      });
+    }
+  }
+}
+
+// Función para mostrar los usuarios del curso en un modal
+function showCourseUsers(courseId) {
+  const course = coursesCache.find(c => c.id === courseId);
+  if (!course) return;
+
+  if (!course.users || course.users.length === 0) {
+    showToast('warning', 'No Users', 'This course has no participants.');
+    return;
+  }
+
+  const modal = document.createElement('div');
+  modal.className = 'course-users-modal';
+  modal.innerHTML = `
+    <div class="course-users-modal-content">
+      <div class="course-users-modal-header">
+        <h3>Participants in ${course.title}</h3>
+        <button class="course-users-modal-close" onclick="closeCourseUsersModal(this)">&times;</button>
+      </div>
+      <ul class="course-users-list">
+        ${course.users.map(userId => {
+          const user = usersCache.find(u => u.id == userId);
+          return `<li>${user ? user.name : 'Unknown User'}</li>`;
+        }).join('')}
+      </ul>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+// Función para cerrar el modal
+function closeCourseUsersModal(button) {
+  const modal = button.closest('.course-users-modal');
+  if (modal) modal.remove();
+}
+
+// Función para migrar imágenes de blob a Base64
+async function migrateBlobImagesToBase64() {
+  for (const course of coursesCache) {
+    if (course.image && course.image.startsWith('blob:')) {
+      try {
+        const response = await fetch(course.image);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        const base64 = await new Promise((resolve) => {
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+        course.image = base64;
+      } catch (error) {
+        console.error(`Error migrando imagen del curso ${course.id}:`, error);
+        course.image = defaultImageBase64;
+      }
+    }
+  }
+  saveCoursesToLocalStorage();
+}
+
+// Imagen por defecto en Base64
+const defaultImageBase64 = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MCIgaGVpZ2h0PSI1MCIgdmlld0JveD0iMCAwIDUwIDUwIiBmaWxsPSJub25lIiBzdHJva2U9IiNjY2MiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIGZpbGw9IiNmZmYiLz48Y2lyY2xlIGN4PSIyNSIgY3k9IjI1IiByPSIyMCIvPjx0ZXh0IHRleHQtYW5jaG9yPSJtaWRkbGUiIHg9IjI1IiB5PSIyNSIgZmlsbD0iI2RlZCI+Qy9zdGFnZTwvdGV4dD48L3N2Zz4=";
+
 // Función para mostrar tabla de certificados (admin)
-function displayAdminCertificatesTable(certificates = adminCertificatesCache) {
+function displayAdminCertificatesTable(certificates = certificatesCache) {
   const container = document.getElementById('certificates-table-container');
-  if (certificates.length === 0) {
+  const validCertificates = certificates.filter(cert =>
+    cert && cert.id && cert.course && cert.nombre
+  );
+  if (validCertificates.length === 0) {
     container.innerHTML = `
       <div class="text-center" style="padding: 2rem;">
         <p>No certificates found.</p>
@@ -504,22 +606,25 @@ function displayAdminCertificatesTable(certificates = adminCertificatesCache) {
           </tr>
         </thead>
         <tbody>
-          ${certificates.map(cert => `
-            <tr style="border-bottom: 1px solid var(--neutral-200);">
-              <td style="padding: 0.75rem; font-family: monospace; font-weight: 600;">${cert.certificateId}</td>
-              <td style="padding: 0.75rem;">${cert.user.name}</td>
-              <td style="padding: 0.75rem;">${cert.course.title}</td>
-              <td style="padding: 0.75rem;">${new Date(cert.completionDate).toLocaleDateString()}</td>
-              <td style="padding: 0.75rem;">
-                <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; margin-right: 0.5rem;" onclick="alert('Download functionality not implemented')">
-                  <i class="fas fa-download"></i>
-                </button>
-                <button class="btn btn-outline" style="padding: 0.25rem 0.5rem;" onclick="alert('Verify functionality not implemented')">
-                  <i class="fas fa-search"></i>
-                </button>
-              </td>
-            </tr>
-          `).join('')}
+          ${validCertificates.map(cert => {
+            const course = coursesCache.find(c => c.id === cert.course.id);
+            const courseTitle = course ? course.title : 'Unknown Course';
+            // Genera la fecha actual en formato local
+            const currentDate = new Date().toLocaleDateString();
+            return `
+              <tr style="border-bottom: 1px solid var(--neutral-200);">
+                <td style="padding: 0.75rem; font-family: monospace; font-weight: 600;">WS-${cert.id}</td>
+                <td style="padding: 0.75rem;">${localStorage.getItem('userName') || cert.nombre}</td>
+                <td style="padding: 0.75rem;">${courseTitle}</td>
+                <td style="padding: 0.75rem;">${currentDate}</td> <!-- Fecha actual -->
+                <td style="padding: 0.75rem;">
+                  <button class="btn btn-outline" style="padding: 0.25rem 0.5rem;" onclick="downloadCertificate(${cert.id})">
+                    <i class="fas fa-download"></i>
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('')}
         </tbody>
       </table>
     </div>
@@ -541,10 +646,12 @@ function loadAdminData() {
 }
 
 // Función para actualizar estadísticas de administrador
-function updateAdminStats(stats) {
-  document.getElementById('admin-total-users').textContent = stats.totalUsers || 0;
-  document.getElementById('admin-total-courses').textContent = stats.totalCourses || 0;
-  document.getElementById('admin-total-certificates').textContent = stats.totalCertificates || 0;
+function updateAdminStats() {
+  // Calcula el total de certificados según la cantidad en certificatesCache
+  const totalCertificates = certificatesCache.length;
+  document.getElementById('admin-total-users').textContent = usersCache.length || 0;
+  document.getElementById('admin-total-courses').textContent = coursesCache.length || 0;
+  document.getElementById('admin-total-certificates').textContent = totalCertificates || 0;
 }
 
 // Función para mostrar toast de confirmación
@@ -761,20 +868,26 @@ function updateGraduateStats(certificates) {
 }
 
 // Función para verificar certificado
-async function verifyCertificate() {
-  const certificateInput = document.getElementById('certificate-id').value.trim();
-  if (!certificateInput) {
+// Función para verificar certificado
+async function verifyCertificate(certificateId = null) {
+  let idToVerify = certificateId;
+  if (!idToVerify) {
+    idToVerify = document.getElementById('certificate-id').value.trim();
+  }
+  if (!idToVerify) {
     showToast('error', 'Certificate ID Required', 'Please enter a certificate ID or hash to verify.');
     return;
   }
   const btnText = document.querySelector('.verify-btn-text');
   const btnSpinner = document.querySelector('.verify-btn-spinner');
-  btnText.classList.add('hidden');
-  btnSpinner.classList.add('active');
+  if (btnText && btnSpinner) { // Validar que existan
+    btnText.classList.add('hidden');
+    btnSpinner.classList.add('active');
+  }
   try {
-    const certificatesRef = db.collection('certificates');
-    const snapshotById = await certificatesRef.where('id', '==', certificateInput).get();
-    const snapshotByHash = await certificatesRef.where('hash', '==', certificateInput).get();
+    const certificatesRef = dbCertificates.collection('certificates');
+    const snapshotById = await certificatesRef.where('id', '==', idToVerify).get();
+    const snapshotByHash = await certificatesRef.where('hash', '==', idToVerify).get();
     if (snapshotById.empty && snapshotByHash.empty) {
       displayVerificationError();
       showToast('error', 'Certificate Not Found', 'The certificate ID or hash was not found in our system.');
@@ -796,8 +909,10 @@ async function verifyCertificate() {
     console.error("Error verifying certificate: ", error);
     showToast('error', 'Verification Failed', 'An error occurred while verifying the certificate.');
   } finally {
-    btnText.classList.remove('hidden');
-    btnSpinner.classList.remove('active');
+    if (btnText && btnSpinner) { // Validar que existan
+      btnText.classList.remove('hidden');
+      btnSpinner.classList.remove('active');
+    }
   }
 }
 
@@ -936,35 +1051,6 @@ function setupFileUpload() {
   });
 }
 
-// Función para cargar usuarios en el formulario de cursos
-function loadUsersIntoCourseForm() {
-  const container = document.getElementById('course-users-checkboxes');
-  container.innerHTML = '';
-  usersCache.forEach(user => {
-    const checkboxItem = document.createElement('div');
-    checkboxItem.className = 'checkbox-item';
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.id = `user-${user.id}`;
-    checkbox.value = user.id;
-    const label = document.createElement('label');
-    label.htmlFor = `user-${user.id}`;
-    label.textContent = `${user.name} (${user.email})`;
-    checkboxItem.appendChild(checkbox);
-    checkboxItem.appendChild(label);
-    container.appendChild(checkboxItem);
-  });
-  if (currentCourseId) {
-    const course = coursesCache.find(c => c.id === currentCourseId);
-    if (course?.users) {
-      course.users.forEach(userId => {
-        const checkbox = document.querySelector(`#user-${userId}`);
-        if (checkbox) checkbox.checked = true;
-      });
-    }
-  }
-}
-
 // Función para manejar selección de archivo
 function handleFileSelection(file) {
   const fileInfo = document.getElementById('file-info');
@@ -1096,16 +1182,17 @@ function filterCoursesTable(searchTerm) {
   displayCoursesTable(filteredCourses);
 }
 
-// Función para filtrar certificados según el término de búsqueda
 function filterCertificatesTable(searchTerm) {
   const term = searchTerm.toLowerCase();
-  const filteredCertificates = certificatesCache.filter(cert =>
-    cert.nombre.toLowerCase().includes(term) ||
-    cert.curso.toLowerCase().includes(term) ||
-    cert.id.toLowerCase().includes(term)
-  );
-  displayCertificates(filteredCertificates);
+  const filteredCertificates = certificatesCache.filter(cert => {
+    // Asegúrate de que el ID del certificado incluya "ws-" al comparar
+    const certId = cert.id ? `ws-${String(cert.id).toLowerCase()}` : '';
+    const idMatch = certId.includes(term);
+    return idMatch;
+  });
+  displayAdminCertificatesTable(filteredCertificates);
 }
+
 
 // Función para configurar event listeners
 function setupEventListeners() {
@@ -1135,13 +1222,12 @@ function setupEventListeners() {
 }
 
 // Evento DOMContentLoaded
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  await loadUsers(); // Espera a que los usuarios se carguen
   loadCoursesFromLocalStorage();
-  loadUsers().then(() => {
-    displayUsersTable();
-  });
-  initializeApp();
-  setupEventListeners();
+  displayUsersTable();
+  displayCoursesTable(); // Ahora usersCache está cargado
+
   const courseForm = document.getElementById('course-form');
   if (courseForm) {
     courseForm.addEventListener('submit', async function(e) {
@@ -1150,22 +1236,48 @@ document.addEventListener('DOMContentLoaded', function() {
       const description = document.getElementById('course-description').value;
       const duration = parseInt(document.getElementById('course-duration').value);
       const checkboxes = document.querySelectorAll('#course-users-checkboxes input[type="checkbox"]:checked');
-      const selectedUsers = Array.from(checkboxes).map(checkbox => parseInt(checkbox.value));
-      let imageUrl = '';
-      if (currentImageFile) {
-        imageUrl = await uploadImage(currentImageFile);
+      const selectedUsers = Array.from(checkboxes).map(checkbox => checkbox.value);
+      const imageInput = document.getElementById('course-image');
+      let imageBase64 = '';
+
+      if (imageInput.files.length > 0) {
+        const file = imageInput.files[0];
+        imageBase64 = await uploadImage(file);
+      } else if (currentCourseId) {
+        const course = coursesCache.find(c => c.id === currentCourseId);
+        if (course) {
+          imageBase64 = course.image || '';
+        }
       }
+
       if (currentCourseId) {
+        // Editar curso existente
         coursesCache = coursesCache.map(c => {
           if (c.id === currentCourseId) {
-            return { ...c, title, description, duration, image: imageUrl || c.image, users: selectedUsers || [] };
+            return {
+              ...c,
+              title,
+              description,
+              duration,
+              image: imageBase64,
+              users: selectedUsers // Guardar los usuarios seleccionados
+            };
           }
           return c;
         });
       } else {
+        // Crear nuevo curso
         const newId = coursesCache.length > 0 ? Math.max(...coursesCache.map(c => c.id)) + 1 : 1;
-        coursesCache.push({ id: newId, title, description, duration, image: imageUrl, users: selectedUsers || [] });
+        coursesCache.push({
+          id: newId,
+          title,
+          description,
+          duration,
+          image: imageBase64,
+          users: selectedUsers // Guardar los usuarios seleccionados
+        });
       }
+
       saveCoursesToLocalStorage();
       displayCoursesTable();
       loadGraduateData();
@@ -1174,6 +1286,10 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     console.error('Course form not found in the DOM.');
   }
+
+  initializeApp();
+  setupEventListeners();
+
   const userName = localStorage.getItem('userName');
   const logoutButton = document.querySelector('.logout-btn');
   if (!userName) {
@@ -1181,6 +1297,7 @@ document.addEventListener('DOMContentLoaded', function() {
   } else {
     document.querySelector('.user-info span').textContent = userName;
   }
+
   const userRole = localStorage.getItem('userRole');
   const adminBtns = document.querySelectorAll('.nav-btn[data-view="admin"], .mobile-nav-btn[data-view="admin"]');
   const graduateBtns = document.querySelectorAll('.nav-btn[data-view="graduate"], .mobile-nav-btn[data-view="graduate"]');
@@ -1196,5 +1313,6 @@ document.addEventListener('DOMContentLoaded', function() {
     verifierBtns.forEach(btn => btn.style.display = 'block');
     showView('graduate');
   }
+
   loadInitialData();
 });
